@@ -1,7 +1,9 @@
 // check the framer branch for a more complex version that trims things
 
 let path;
-let curve;
+let curve1;
+
+let curve2;
 
 // store paper size
 let w;
@@ -17,27 +19,42 @@ window.onload = function () {
   w = paper.view.bounds.width;
   h = paper.view.bounds.height;
 
-  path = new Path.Line([50, 50], [150, 150]);
-  path.strokeColor = "black";
-  path.strokeWidth = 3;
-
   // Create an arc shaped path:
-  curve = new Path({
+  curve1 = new Path({
     strokeColor: "black",
   });
 
-  curve.add(new Point(w / 4, h / 4));
-  curve.arcTo(new Point((w * 3) / 4, (h * 3) / 4));
+  curve1.add(new Point(w / 4, h / 4));
+  curve1.arcTo(new Point((w * 3) / 4, (h * 3) / 4));
 
-  // Create small circles on the paths:
-  var pathCircle = new Path.Circle({
-    center: path.getPointAt(path.length / 3), // get the offset on the path
-    radius: 20,
-    fillColor: "red",
+  curve2 = new Path({
+    strokeColor: "black",
   });
 
-  pointsOnPath(curve, 10);
+  curve2.add(new Point((w * 3) / 5, (h * 2) / 5));
+  curve2.arcTo(new Point(w / 4, (h * 3) / 4));
 
+  var rectangle = new Path.Rectangle({
+    point: view.center,
+    size: new Size(10, 100),
+    fillColor: "orange",
+    // strokeColor: "orange",
+    applyMatrix: false,
+    visible: false,
+  });
+
+  let circle = new Path.Circle({
+    center: view.center, // get the offset on the path
+    radius: 10,
+    fillColor: "cyan",
+    visible: false,
+  });
+
+  let thing = circle.clone();
+  thing.position = [100, 200];
+
+  pointsOnPath(curve1, circle, 10);
+  pointsOnPath(curve2, rectangle, 10);
   // now draw
   paper.view.draw();
 
@@ -49,14 +66,23 @@ window.onload = function () {
   };
 };
 
-function pointsOnPath(path, num) {
+function pointsOnPath(path, brush, num) {
+  // enable start point to be spaced into path
+  // we could make this zero and ensure we have one at the end somehow
   let start = path.length / (num * 2);
+
   for (let i = 0; i < num; i++) {
-    let curveCircle = new Path.Circle({
-      center: path.getPointAt((path.length * i) / num + start), // get the offset on the path
-      radius: 10,
-      fillColor: "cyan",
-    });
+    let b = brush.clone();
+
+    var offset = (path.length * i) / num + start;
+    // Get point to position the rectangle.
+    var point = path.getPointAt(offset);
+    // Get tangent vector at this point.
+    var tangent = path.getTangentAt(offset);
+
+    b.position = point;
+    b.rotation = tangent.angle;
+    b.visible = true;
   }
 }
 
