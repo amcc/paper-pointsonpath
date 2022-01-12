@@ -8,6 +8,7 @@ let circle;
 let SVGBrushGroup;
 
 let brushSize = 100;
+let brushStroke = 1;
 let brushSin = 0;
 
 // store paper size
@@ -117,21 +118,25 @@ window.onload = function () {
 
   console.log(paper);
   paper.view.onFrame = function (evt) {
+    // console.log(evt);
     if (svgGroup.children && SVGBrushGroup) {
       // vary the brush
       let currentBrush = Math.sin(brushSin) * brushSize;
+      let circleRad = Math.sin(brushSin) * 50;
+
       brushSin += 0.01;
 
       // let brushGroup = new CompoundPath();
       // brushGroup.parent = SVGBrushGroup;
 
       // console.log("item");
-      let circler = new Path.Circle({
+      let circle = new Path.Circle({
         center: view.center, // get the offset on the path
-        radius: 20,
+        radius: circleRad,
         // x: 50,
         // fillColor: "cyan",
         strokeColor: "black",
+        strokeWidth: brushStroke,
         visible: false,
         parent: SVGBrushGroup,
       });
@@ -141,22 +146,28 @@ window.onload = function () {
         size: new Size(currentBrush, currentBrush * 2),
         fillColor: "black",
         strokeColor: "red",
-        strokeWidth: 4,
+        strokeWidth: brushStroke,
         // applyMatrix: false,
         visible: false,
         rotation: 45 + brushSin * 10,
         parent: SVGBrushGroup,
       });
 
-      onFrameBrush(
-        svgGroup.children[0],
-        rectangle,
-        SVGBrushGroup,
-        10,
-        true,
-        true
-      );
+      // var cPath = new CompoundPath({
+      //   children: [circle, rectangle],
+      //   fillColor: "black",
+      //   strokeColor: "red",
+      //   // parent: SVGBrushGroup,
+      //   selected: true,
+      // });
+
+      onFrameBrush(svgGroup.children[0], circle, SVGBrushGroup, 10, true, true);
     }
+  };
+
+  paper.view.onMouseMove = function (evt) {
+    // console.log(evt.point.x);
+    brushStroke = evt.point.x / 20 + 1;
   };
 };
 
