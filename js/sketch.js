@@ -5,6 +5,11 @@ let curve1;
 let curve2;
 let circle;
 
+let SVGBrushGroup;
+
+let brushSize = 100;
+let brushSin = 0;
+
 // store paper size
 let w;
 let h;
@@ -96,7 +101,6 @@ window.onload = function () {
   svgGroup.importSVG("img/wip.svg", {
     onLoad: svgBrush,
   });
-  console.log("svgGroup", svgGroup.children);
   // let svgPath = paper.view.importSVG("img/wip.svg");
   // svgPath.selected = true;
   // pointsOnPath(curve1, circle, 10, true);
@@ -110,48 +114,118 @@ window.onload = function () {
     w = paper.view.bounds.width;
     h = paper.view.bounds.height;
   };
+
+  console.log(paper);
+  paper.view.onFrame = function (evt) {
+    if (svgGroup.children && SVGBrushGroup) {
+      // vary the brush
+      let currentBrush = Math.sin(brushSin) * brushSize;
+      brushSin += 0.01;
+
+      // let brushGroup = new CompoundPath();
+      // brushGroup.parent = SVGBrushGroup;
+
+      // console.log("item");
+      let circler = new Path.Circle({
+        center: view.center, // get the offset on the path
+        radius: 20,
+        // x: 50,
+        // fillColor: "cyan",
+        strokeColor: "black",
+        visible: false,
+        parent: SVGBrushGroup,
+      });
+
+      var rectangle = new Path.Rectangle({
+        point: view.center,
+        size: new Size(currentBrush, currentBrush * 2),
+        fillColor: "black",
+        strokeColor: "red",
+        strokeWidth: 4,
+        // applyMatrix: false,
+        visible: false,
+        rotation: 45 + brushSin * 10,
+        parent: SVGBrushGroup,
+      });
+
+      onFrameBrush(
+        svgGroup.children[0],
+        rectangle,
+        SVGBrushGroup,
+        10,
+        true,
+        true
+      );
+    }
+  };
 };
 
 function svgBrush(item, svg) {
-  console.log("item", item.children);
-  let circler = new Path.Circle({
-    center: view.center, // get the offset on the path
-    radius: 25,
-    // fillColor: "cyan",
-    strokeColor: "black",
-    visible: false,
-  });
+  // console.log("item", item.children);
 
-  for (let i = 0; i < item.children.length; i++) {
-    if (item.children[i].segments) {
-      pointsOnPath(item.children[i], circler, 10, true);
-      item.children[i].strokeWidth = 0;
+  SVGBrushGroup = new Group();
+  SVGBrushGroup.loaded = true;
+}
+
+function onFrameBrush(item, brush, parent, num, unite, includeStray) {
+  // make sure the svg is loaded
+  if (parent && parent.loaded) {
+    // find the item to brush
+
+    // clear the brushes before making more
+    parent.children = [];
+    for (let i = 0; i < item.children.length; i++) {
+      // console.log(item.children[i]);
+
+      // console.log("ho");
+      if (item.children[i].segments) {
+        // console.log("hi");
+
+        pointsOnPath(item.children[i], brush, num, parent, unite, includeStray);
+        item.children[i].strokeWidth = 0;
+        // console.log(SVGBrushGroup);
+      }
     }
+    // SVGBrushGroup.selected = true;
   }
 }
 
-function pointsOnPath(path, brush, num, unite = false) {
+function pointsOnPath(
+  path,
+  brush,
+  num,
+  parent,
+  unite = false,
+  includeStray = false
+) {
   // enable start point to be spaced into path
   // we could make this zero and ensure we have one at the end somehow
-  let start = path.length / (num * 2);
-  let pathsArray = [];
 
-  for (let i = 0; i < num; i++) {
-    var offset = (path.length * i) / num + start;
-    // Get point to position the rectangle.
-    var point = path.getPointAt(offset);
-    // Get tangent vector at this point.
-    var tangent = path.getTangentAt(offset);
+  // make sure we have a whole number of brushes
+  num = Math.floor(num);
 
-    let b = brush.clone();
-    b.position = point;
-    b.rotation = tangent.angle;
-    b.visible = unite ? false : true;
+  if (num > 1) {
+    let start = path.length / (num * 2);
+    let pathsArray = [];
 
-    pathsArray.push(b);
-  }
-  if (unite) {
-    let united = uniter(pathsArray);
+    for (let i = 0; i < num; i++) {
+      var offset = (path.length * i) / num + start;
+      // Get point to position the rectangle.
+      var point = path.getPointAt(offset);
+      // Get tangent vector at this point.
+      var tangent = path.getTangentAt(offset);
+
+      let b = brush.clone();
+      b.position = point;
+      b.rotation = tangent.angle;
+      b.visible = unite ? false : true;
+      b.parent = parent;
+      pathsArray.push(b);
+    }
+    if (unite) {
+      let united = uniter(pathsArray, includeStray);
+      if (parent) united.parent = parent;
+    }
   }
 }
 
@@ -164,12 +238,21 @@ Math.degrees = function (radians) {
   return (radians * 180) / Math.PI;
 };
 
-function uniter(array) {
+function uniter(array, includeStray = false) {
+  let pathGroup = new Group();
   let path = array[0];
-  for (let i = 0; i < array.length; i++) {
-    path = path.unite(array[i + 1]);
+  for (let i = 0; i < array.length - 1; i++) {
+    if (overlaps(path, array[i + 1])) {
+      path = path.unite(array[i + 1]);
+    } else if (includeStray) {
+      // console.log("er");
+      let newpath = array[i + 1];
+      newpath.visible = true;
+      // newpath.parent = pathGroup;
+    }
   }
   path.visible = true;
+  // path.parent = pathGroup;
   return path;
 }
 
